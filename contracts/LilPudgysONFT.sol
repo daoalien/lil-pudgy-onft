@@ -7,7 +7,8 @@ import "@layerzerolabs/solidity-examples/contracts/token/onft/ONFT721.sol";
 
 contract LilPudgysONFT is ONFT721 {
     string public baseTokenURI;
-    uint256 public constant MAX_ELEMENTS = 9999;
+    uint256 public constant maxMint = 9999;
+    uint256 public totalMinted;
     uint256 public mintPrice;
 
     constructor(
@@ -29,7 +30,7 @@ contract LilPudgysONFT is ONFT721 {
         }
 
         uint256 key = 0;
-        for (uint256 i = 0; i < MAX_ELEMENTS; i++) {
+        for (uint256 i = 0; i < maxMint; i++) {
             if (_ownerOf(i) == _owner) {
                 tokensId[key] = i;
                 key++;
@@ -52,10 +53,21 @@ contract LilPudgysONFT is ONFT721 {
 
     function mint() external payable {
         require(msg.value >= mintPrice, "Not enough ether sent");
-        require(totalSupply() < MAX_ELEMENTS, "Max supply reached");
+        require(totalMinted < maxMint, "Max supply reached");
         
-        uint256 tokenId = totalSupply() + 1;
+        uint256 tokenId = totalMinted + 1;
+        totalMinted++;
         _safeMint(msg.sender, tokenId);
+    }
+
+    function estimateGasBridgeFee(uint16 _dstChainId, bool _useZro, bytes memory _adapterParams) public view virtual returns (uint nativeFee, uint zroFee) {
+        bytes memory payload = abi.encode(msg.sender,0);
+        return lzEndpoint.estimateFees(_dstChainId, payable(address(this)), payload, _useZro, _adapterParams);
+    }
+
+    function bridgeGas(uint16 _dstChainId, address _zroPaymentAddress, bytes memory _adapterParams) public payable {
+        _checkGasLimit(_dstChainId, FUNCTION_TYPE_SEND, _adapterParams, dstChainIdToTransferGas[_dstChainId]);
+        _lzSend(_dstChainId, abi.encode(msg.sender,0), payable(address(this)), _zroPaymentAddress, _adapterParams, msg.value);
     }
 
     function setPrice(uint256 _price) external onlyOwner {
