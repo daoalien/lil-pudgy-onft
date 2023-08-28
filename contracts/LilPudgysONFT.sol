@@ -7,9 +7,16 @@ import "@layerzerolabs/solidity-examples/contracts/token/onft/ONFT721.sol";
 
 contract LilPudgysONFT is ONFT721 {
     string public baseTokenURI;
-    uint256 public constant MAX_ELEMENTS = 22222;
+    uint256 public constant MAX_ELEMENTS = 9999;
+    uint256 public mintPrice;
 
-    constructor(string memory baseURI, string memory _name, string memory _symbol, uint256 _minGasToTransfer, address _lzEndpoint) ONFT721(_name, _symbol, _minGasToTransfer, _lzEndpoint) {
+    constructor(
+        string memory baseURI,
+        string memory _name,
+        string memory _symbol,
+        uint256 _minGasToTransfer,
+        address _lzEndpoint
+    ) ONFT721(_name, _symbol, _minGasToTransfer, _lzEndpoint) {
         setBaseURI(baseURI);
     }
 
@@ -17,16 +24,18 @@ contract LilPudgysONFT is ONFT721 {
         uint256 tokenCount = balanceOf(_owner);
         uint256[] memory tokensId = new uint256[](tokenCount);
 
-        if(tokenCount == 0){
+        if (tokenCount == 0) {
             return tokensId;
         }
 
         uint256 key = 0;
         for (uint256 i = 0; i < MAX_ELEMENTS; i++) {
-            if(_ownerOf(i) == _owner){
+            if (_ownerOf(i) == _owner) {
                 tokensId[key] = i;
                 key++;
-                if(key == tokenCount){break;}
+                if (key == tokenCount) {
+                    break;
+                }
             }
         }
 
@@ -39,5 +48,22 @@ contract LilPudgysONFT is ONFT721 {
 
     function _baseURI() internal view virtual override returns (string memory) {
         return baseTokenURI;
+    }
+
+    function mint() external payable {
+        require(msg.value >= mintPrice, "Not enough ether sent");
+        require(totalSupply() < MAX_ELEMENTS, "Max supply reached");
+        
+        uint256 tokenId = totalSupply() + 1;
+        _safeMint(msg.sender, tokenId);
+    }
+
+    function setPrice(uint256 _price) external onlyOwner {
+        mintPrice = _price;
+    }
+
+    function withdrawFees() external onlyOwner {
+        require(address(this).balance > 0, "No fees to withdraw");
+        payable(owner()).transfer(address(this).balance);
     }
 }
